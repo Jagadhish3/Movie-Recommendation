@@ -1,50 +1,37 @@
 pipeline {
     agent any
-
+    
     environment {
-        // Define any environment variables here
+        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials-id'  // Use the ID of your Docker Hub credentials
     }
-
+    
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/Jagadhish3/Movie-Recommendation.git'
+                // Pull code from GitHub or your version control system
+                checkout scm
             }
         }
-
-        stage('Set Up Python Environment') {
+        
+        stage('Build Docker Image') {
             steps {
-                sh '''
-                    python -m venv venv
-                    source venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                '''
+                script {
+                    // Build the Docker image
+                    sh 'docker build -t jagadhish3/movie-recommender .'
+                }
             }
         }
-
-        stage('Run Application') {
+        
+        stage('Push Docker Image to Docker Hub') {
             steps {
-                sh '''
-                    source venv/bin/activate
-                    python app.py
-                '''
+                script {
+                    // Login to Docker Hub using Jenkins credentials
+                    withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh 'docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD'
+                        sh 'docker push jagadhish3/movie-recommender:latest'
+                    }
+                }
             }
-        }
-
-        stage('Docker Build and Push') {
-            steps {
-                sh '''
-                    docker build -t jagadhish3/movie-recommendation:latest .
-                    docker push jagadhish3/movie-recommendation:latest
-                '''
-            }
-        }
-    }
-
-    post {
-        always {
-            echo 'Pipeline execution completed.'
         }
     }
 }
